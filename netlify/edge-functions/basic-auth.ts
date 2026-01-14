@@ -13,28 +13,25 @@ const CREDENTIALS: Record<string, string> = {
   tester10: "senha10",
 };
 
-export default async (request: Request, context: any) => {
+export default async (request: Request, context: Context) => {
   const auth = request.headers.get("authorization") || "";
-
-  const expectedUser = "SEU_USER";
-  const expectedPass = "SUA_SENHA";
 
   const invalid = () =>
     new Response("Unauthorized", {
       status: 401,
-      headers: {
-        "WWW-Authenticate": 'Basic realm="Restricted", charset="UTF-8"',
-      },
+      headers: { "WWW-Authenticate": 'Basic realm="Restricted", charset="UTF-8"' },
     });
 
   if (!auth.startsWith("Basic ")) return invalid();
 
-  const decoded = atob(auth.replace("Basic ", ""));
-  const [user, pass] = decoded.split(":");
+  const decoded = atob(auth.slice("Basic ".length));
+  const sep = decoded.indexOf(":");
+  if (sep === -1) return invalid();
 
-  if (user !== expectedUser || pass !== expectedPass) return invalid();
+  const user = decoded.slice(0, sep);
+  const pass = decoded.slice(sep + 1);
 
-  // ✅ senha OK: NÃO redireciona. Apenas continua.
+  if (CREDENTIALS[user] !== pass) return invalid();
+
   return context.next();
-};
 };
