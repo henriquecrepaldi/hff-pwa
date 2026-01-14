@@ -13,33 +13,28 @@ const CREDENTIALS: Record<string, string> = {
   tester10: "senha10",
 };
 
-export default async (request: Request, context: Context) => {
-  const url = new URL(request.url);
-  const path = url.pathname;
+export default async (request: Request, context: any) => {
+  const auth = request.headers.get("authorization") || "";
 
-  if (path.startsWith("/.netlify/") || path.startsWith("/_netlify/")) {
-    return context.next();
-  }
+  const expectedUser = "SEU_USER";
+  const expectedPass = "SUA_SENHA";
 
-  const authHeader = request.headers.get("Authorization");
-
-  if (!authHeader || !authHeader.startsWith("Basic ")) {
-    return new Response("Unauthorized", {
+  const invalid = () =>
+    new Response("Unauthorized", {
       status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="Secure Area"' },
+      headers: {
+        "WWW-Authenticate": 'Basic realm="Restricted", charset="UTF-8"',
+      },
     });
-  }
 
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = atob(base64Credentials);
-  const [username, password] = credentials.split(":");
+  if (!auth.startsWith("Basic ")) return invalid();
 
-  if (!username || !password || CREDENTIALS[username] !== password) {
-    return new Response("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="Secure Area"' },
-    });
-  }
+  const decoded = atob(auth.replace("Basic ", ""));
+  const [user, pass] = decoded.split(":");
 
+  if (user !== expectedUser || pass !== expectedPass) return invalid();
+
+  // ✅ senha OK: NÃO redireciona. Apenas continua.
   return context.next();
+};
 };
